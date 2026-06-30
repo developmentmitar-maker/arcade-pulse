@@ -1,7 +1,7 @@
 // ============================================
 // Email Notification Service
 // ============================================
-// Sends update notification emails via Gmail SMTP (nodemailer) to
+// Sends update notification emails via Brevo SMTP (nodemailer) to
 // all active subscribers when changes are detected.
 
 import nodemailer from 'nodemailer';
@@ -14,14 +14,14 @@ import { format } from 'date-fns';
 import mongoose from 'mongoose';
 
 // ============================================
-// SMTP Transport (Gmail)
+// SMTP Transport (Brevo)
 // ============================================
 // Required env vars:
-//   SMTP_HOST=smtp.gmail.com
+//   SMTP_HOST=smtp-relay.brevo.com
 //   SMTP_PORT=587
-//   SMTP_USER=your@gmail.com
-//   SMTP_PASS=xxxx xxxx xxxx xxxx  (16-char Google App Password)
-//   EMAIL_FROM=Arcade Pulse <your@gmail.com>
+//   SMTP_USER=your_brevo_login_email
+//   SMTP_PASS=your_brevo_smtp_key  (Brevo dashboard → SMTP & API → Generate SMTP key)
+//   EMAIL_FROM=Arcade Pulse <your_verified_sender@yourdomain.com>
 
 function createTransporter() {
   const host = process.env.SMTP_HOST;
