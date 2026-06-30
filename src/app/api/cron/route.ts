@@ -1,8 +1,14 @@
 // ============================================
 // GET /api/cron — Scheduled Scrape Trigger
 // ============================================
-// Called by Vercel Cron every 2 hours.
-// Scrapes both websites, detects changes, sends notifications.
+// Flow:
+//   1. Verify CRON_SECRET (Bearer token in Authorization header)
+//   2. Connect to MongoDB
+//   3. Scrape both portals via Playwright (JS-rendered pages)
+//   4. Compare results against previous snapshot
+//   5. Save new snapshot to MongoDB
+//   6. If changes detected → send Brevo email + broadcast SSE
+//   7. Return JSON summary
 
 import { type NextRequest } from 'next/server';
 import dbConnect from '@/lib/db';
@@ -14,39 +20,43 @@ import sseManager from '@/lib/sse-manager';
 import type { SectionData } from '@/types';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Allow up to 60s for Playwright scraping
+export const maxDuration = 60; // Playwright needs up to 60s on Vercel Pro; hobby plan cap is 10s
 
 export async function GET(request: NextRequest) {
-  // Verify the request is from Vercel Cron or has valid secret
+  // ── Step 1: Auth check ────────────────────────────────────────
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
+  const startTime = Date.now();
+
   try {
+    // ── Step 2: Connect MongoDB ──────────────────────────────────
     await dbConnect();
 
-    // 1. Scrape both websites
+    // ── Step 3: Scrape all monitored portals ─────────────────────
+    console.log('[cron] Starting scrape run...');
     const results = await scrapeAll();
 
     const summary = {
       checkedAt: new Date().toISOString(),
+      durationMs: 0,
       websites: [] as Array<{
         websiteId: string;
         success: boolean;
         hasChanges: boolean;
         changeCount: number;
+        error?: string;
       }>,
       totalNotificationsSent: 0,
       totalNotificationsFailed: 0,
     };
 
-    // 2. Process each result
+    // ── Step 4–6: Process each scraped site ──────────────────────
     for (const result of results) {
-      // Get previous snapshot for comparison
-      const previousSnapshot = await Snapshot.findOne({
-        website: result.websiteId,
-      })
+      // Load the most recent previous snapshot for comparison
+      const previousSnapshot = await Snapshot.findOne({ website: result.websiteId })
         .sort({ checkedAt: -1 })
         .lean();
 
@@ -54,14 +64,14 @@ export async function GET(request: NextRequest) {
         ? (previousSnapshot.sections as SectionData)
         : null;
 
-      // 3. Detect changes
+      // Only diff when the scrape succeeded
       const changes = result.success
         ? detectChanges(result.sections, previousSections)
         : [];
 
       const hasChanges = changes.length > 0;
 
-      // 4. Save new snapshot
+      // Save snapshot regardless of success/failure (so we track errors too)
       const snapshot = await Snapshot.create({
         website: result.websiteId,
         sections: result.sections,
@@ -70,15 +80,13 @@ export async function GET(request: NextRequest) {
         changes,
       });
 
-      // 5. Send notifications if changes detected
+      // Send email + SSE only when real changes exist
       if (hasChanges) {
-        const notifResult = await notifySubscribers(
-          result.websiteId,
-          changes,
-          snapshot._id
-        );
+        console.log(`[cron] Changes detected for ${result.websiteId} (${changes.length} section(s))`);
+        const notifResult = await notifySubscribers(result.websiteId, changes, snapshot._id);
         summary.totalNotificationsSent += notifResult.sent;
         summary.totalNotificationsFailed += notifResult.failed;
+        console.log(`[cron] Emails: ${notifResult.sent} sent, ${notifResult.failed} failed`);
       }
 
       summary.websites.push({
@@ -86,24 +94,26 @@ export async function GET(request: NextRequest) {
         success: result.success,
         hasChanges,
         changeCount: changes.length,
+        ...(result.error ? { error: result.error } : {}),
       });
     }
 
-    // 6. Broadcast SSE event for live dashboard updates
+    // ── Step 6b: Broadcast SSE so live dashboard updates instantly ─
     sseManager.publish({
       type: 'snapshot-update',
       data: { summary },
       timestamp: new Date().toISOString(),
     });
 
+    summary.durationMs = Date.now() - startTime;
+    console.log(`[cron] Done in ${summary.durationMs}ms`);
+
     return Response.json({ success: true, data: summary });
   } catch (error) {
-    console.error('Cron error:', error);
+    const errMsg = error instanceof Error ? error.message : 'Cron job failed';
+    console.error('[cron] Fatal error:', errMsg);
     return Response.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Cron job failed',
-      },
+      { success: false, error: errMsg, durationMs: Date.now() - startTime },
       { status: 500 }
     );
   }
