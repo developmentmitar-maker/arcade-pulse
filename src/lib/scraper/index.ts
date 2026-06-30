@@ -17,9 +17,18 @@ export async function scrapeAll(): Promise<ScrapeResult[]> {
   let browser = null;
 
   try {
+    // Set environment variable to skip browser validation checks
+    process.env.PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = '1';
+    
     // Dynamic imports for serverless compatibility (avoids bundling issues)
     const chromium = await import('@sparticuz/chromium');
-    const { chromium: playwrightChromium } = await import('playwright-core');
+    const playwright = await import('playwright-core');
+    const playwrightChromium = playwright.chromium;
+
+    // Get executable path from Sparticuz Chromium
+    const executablePath = await chromium.default.executablePath();
+    
+    console.log('[scraper] Launching browser with executable:', executablePath);
 
     browser = await playwrightChromium.launch({
       args: [
@@ -29,8 +38,8 @@ export async function scrapeAll(): Promise<ScrapeResult[]> {
         '--disable-dev-shm-usage',
         '--disable-gpu',
       ],
-      executablePath: await chromium.default.executablePath(),
-      headless: true,
+      executablePath,
+      headless: chromium.default.headless,
     });
 
     const context = await browser.newContext({

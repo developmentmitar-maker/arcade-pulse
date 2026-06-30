@@ -1,0 +1,3 @@
+# Don't ignore these - they're needed for Playwright
+!node_modules/playwright-core/**
+!node_modules/@sparticuz/chromium/**
