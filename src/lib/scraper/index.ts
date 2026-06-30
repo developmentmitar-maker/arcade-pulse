@@ -39,7 +39,7 @@ export async function scrapeAll(): Promise<ScrapeResult[]> {
         '--disable-gpu',
       ],
       executablePath,
-      headless: chromium.default.headless,
+      headless: chromium.default.headless === true || chromium.default.headless === 'shell',
     });
 
     const context = await browser.newContext({
