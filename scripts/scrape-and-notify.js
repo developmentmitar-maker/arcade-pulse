@@ -61,41 +61,51 @@ async function scrapeArcadePortal(page) {
     });
 
     // Log URL to detect any redirects
-    console.log('[arcade] Loaded URL:', await page.url());
+    console.log('[arcade] Loaded URL:', page.url());
 
     // Additional settle time for Google-hosted pages
     await page.waitForTimeout(3000);
 
     await page.waitForSelector('body', { timeout: 30000 });
 
+    // Extract game cards using Bootstrap card structure
     const sections = await page.evaluate(() => {
-      const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4'));
-      
-      const gamesHeading = headings.find((h) =>
-        /the arcade/i.test(h.textContent || '')
-      );
-      const bonusHeading = headings.find((h) =>
-        /bonus/i.test(h.textContent || '')
-      );
-      const announcementsHeading = headings.find((h) =>
-        /announcements/i.test(h.textContent || '')
+      const cards = Array.from(
+        document.querySelectorAll('.shuffle-item')
       );
 
-      const extractText = (heading) => {
-        if (!heading) return 'Section not found';
-        let text = '';
-        let sibling = heading.nextElementSibling;
-        while (sibling && !/^h[1-4]$/i.test(sibling.tagName)) {
-          text += (sibling.innerText || '') + '\n';
-          sibling = sibling.nextElementSibling;
-        }
-        return text.trim() || 'No content';
-      };
+      const games = cards
+        .map((card) => {
+          const title =
+            card.querySelector('.card-title')?.textContent?.trim() || '';
+
+          const accessCodeText = Array.from(card.querySelectorAll('p'))
+            .find((p) => p.textContent?.includes('Access code'));
+
+          const accessCode = accessCodeText
+            ? accessCodeText.textContent
+                ?.replace('Access code:', '')
+                .trim()
+            : '';
+
+          const pointsText = Array.from(card.querySelectorAll('p'))
+            .find((p) => p.textContent?.includes('Arcade points'));
+
+          const points = pointsText
+            ? pointsText.textContent?.trim()
+            : '';
+
+          if (!title) return '';
+
+          return `${title} | Access code: ${accessCode} | ${points}`;
+        })
+        .filter(Boolean)
+        .join('\n');
 
       return {
-        games: extractText(gamesHeading),
-        bonus: extractText(bonusHeading),
-        announcements: extractText(announcementsHeading),
+        games: games || 'No games found',
+        bonus: '',
+        announcements: '',
       };
     });
 
