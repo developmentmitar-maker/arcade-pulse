@@ -1,10 +1,10 @@
 // ============================================
 // Email Notification Service
 // ============================================
-// Sends update notification emails via Brevo SMTP (nodemailer) to
+// Sends update notification emails via Resend to
 // all active subscribers when changes are detected.
 
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import dbConnect from '@/lib/db';
 import User from '@/lib/models/user';
 import Notification from '@/lib/models/notification';
@@ -14,36 +14,16 @@ import { format } from 'date-fns';
 import mongoose from 'mongoose';
 
 // ============================================
-// SMTP Transport (Brevo)
+// Resend Configuration
 // ============================================
 // Required env vars:
-//   SMTP_HOST=smtp-relay.brevo.com
-//   SMTP_PORT=587
-//   SMTP_USER=your_brevo_login_email
-//   SMTP_PASS=your_brevo_smtp_key  (Brevo dashboard → SMTP & API → Generate SMTP key)
-//   EMAIL_FROM=Arcade Pulse <your_verified_sender@yourdomain.com>
+//   RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxx
+//   EMAIL_FROM=Arcade Pulse <onboarding@resend.dev>
 
-function createTransporter() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const port = Number(process.env.SMTP_PORT ?? 587);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-  if (!host || !user || !pass) {
-    throw new Error(
-      '[notifier] Gmail SMTP is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS in your .env.local file.'
-    );
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
-}
-
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Arcade Pulse <noreply@arcadepulse.app>';
+const EMAIL_FROM =
+  process.env.EMAIL_FROM || 'Arcade Pulse <onboarding@resend.dev>';
 
 // ============================================
 // Main notification function
@@ -63,7 +43,6 @@ export async function notifySubscribers(
     return { sent: 0, failed: 0 };
   }
 
-  const transporter = createTransporter();
   const website = WEBSITES[websiteId];
   const detectedAt = format(new Date(), "h:mm a 'IST'");
   let sent = 0;
@@ -93,7 +72,7 @@ export async function notifySubscribers(
         email: subscriber.email,
       });
 
-      await transporter.sendMail({
+      await resend.emails.send({
         from: EMAIL_FROM,
         to: subscriber.email,
         subject,
