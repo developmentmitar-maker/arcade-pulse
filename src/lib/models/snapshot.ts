@@ -27,7 +27,7 @@ const SnapshotSchema = new Schema<ISnapshot>(
     website: {
       type: String,
       required: true,
-      enum: ['arcade-portal', 'facilitator-portal'],
+      enum: ['arcade-portal', 'facilitator-portal', 'portfolio'],
       index: true,
     },
     sections: {

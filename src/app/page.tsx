@@ -23,7 +23,7 @@ async function getLatestSnapshots(): Promise<Record<WebsiteId, LatestData | null
   try {
     await dbConnect();
 
-    const websiteIds: WebsiteId[] = ['arcade-portal', 'facilitator-portal'];
+    const websiteIds: WebsiteId[] = ['arcade-portal', 'facilitator-portal', 'portfolio'];
     const result: Record<string, LatestData | null> = {};
 
     for (const id of websiteIds) {
@@ -47,6 +47,7 @@ async function getLatestSnapshots(): Promise<Record<WebsiteId, LatestData | null
     return {
       'arcade-portal': null,
       'facilitator-portal': null,
+      'portfolio': null,
     };
   }
 }

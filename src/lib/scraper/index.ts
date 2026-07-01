@@ -63,7 +63,7 @@ export async function scrapeAll(): Promise<ScrapeResult[]> {
       context.newPage(),
     ]);
 
-    const websiteIds: WebsiteId[] = ['arcade-portal', 'facilitator-portal'];
+    const websiteIds: WebsiteId[] = ['arcade-portal', 'facilitator-portal', 'portfolio'];
     const scrapedAt = new Date();
 
     // Run both scrapers concurrently
