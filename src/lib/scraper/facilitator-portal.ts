@@ -12,12 +12,18 @@ import type { SectionData } from '@/types';
 const URL = 'https://rsvp.withgoogle.com/events/arcade-facilitator/home';
 
 export async function scrapeFacilitatorPortal(page: Page): Promise<SectionData> {
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  
+  // Log URL to detect any redirects
+  console.log('[facilitator] Loaded URL:', await page.url());
+
+  // Additional settle time for Google-hosted pages
+  await page.waitForTimeout(3000);
 
   // Wait for the RSVP SPA to hydrate — the root custom element or any main content block
   const hydrated = await Promise.race([
-    page.waitForSelector('rsvp-connected-guest-client', { timeout: 12000 }).then(() => true).catch(() => false),
-    page.waitForSelector('main, [role="main"], .content', { timeout: 12000 }).then(() => true).catch(() => false),
+    page.waitForSelector('rsvp-connected-guest-client', { timeout: 30000 }).then(() => true).catch(() => false),
+    page.waitForSelector('main, [role="main"], .content', { timeout: 30000 }).then(() => true).catch(() => false),
   ]);
 
   // Give the SPA time to render its content after hydration

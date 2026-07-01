@@ -11,10 +11,16 @@ import type { SectionData } from '@/types';
 const URL = 'https://go.cloudskillsboost.google/arcade';
 
 export async function scrapeArcadePortal(page: Page): Promise<SectionData> {
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  
+  // Log URL to detect any redirects
+  console.log('[arcade] Loaded URL:', await page.url());
+
+  // Additional settle time for Google-hosted pages
+  await page.waitForTimeout(3000);
 
   // Wait for Google Sites content container to appear
-  await page.waitForSelector('div[data-is-root-theme]', { timeout: 15000 }).catch(() => null);
+  await page.waitForSelector('div[data-is-root-theme]', { timeout: 30000 }).catch(() => null);
 
   // Additional settle time for lazy-loaded content
   await page.waitForTimeout(2000);

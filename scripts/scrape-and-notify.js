@@ -9,6 +9,11 @@
  *   3. Save new snapshots to MongoDB
  *   4. If changes detected, call Vercel /api/notify endpoint
  */
+require('dotenv').config({ path: '.env.local' });
+
+console.log('Mongo URI:', process.env.MONGODB_URI);
+console.log('SMTP HOST:', process.env.SMTP_HOST);
+console.log('CRON:', process.env.CRON_SECRET);
 
 const mongoose = require('mongoose');
 const { chromium } = require('playwright');
@@ -51,11 +56,17 @@ function detectChanges(current, previous) {
 async function scrapeArcadePortal(page) {
   try {
     await page.goto('https://go.cloudskillsboost.google/arcade', {
-      waitUntil: 'networkidle',
-      timeout: 30000,
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
     });
 
-    await page.waitForSelector('body', { timeout: 10000 });
+    // Log URL to detect any redirects
+    console.log('[arcade] Loaded URL:', await page.url());
+
+    // Additional settle time for Google-hosted pages
+    await page.waitForTimeout(3000);
+
+    await page.waitForSelector('body', { timeout: 30000 });
 
     const sections = await page.evaluate(() => {
       const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4'));
@@ -103,11 +114,17 @@ async function scrapeArcadePortal(page) {
 async function scrapeFacilitatorPortal(page) {
   try {
     await page.goto('https://rsvp.withgoogle.com/events/arcade-facilitator', {
-      waitUntil: 'networkidle',
-      timeout: 30000,
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
     });
 
-    await page.waitForSelector('body', { timeout: 10000 });
+    // Log URL to detect any redirects
+    console.log('[facilitator] Loaded URL:', await page.url());
+
+    // Additional settle time for Google-hosted pages
+    await page.waitForTimeout(3000);
+
+    await page.waitForSelector('body', { timeout: 30000 });
 
     const sections = await page.evaluate(() => {
       const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4'));
