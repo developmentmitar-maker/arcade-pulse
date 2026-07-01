@@ -168,6 +168,36 @@ async function scrapeFacilitatorPortal(page) {
   }
 }
 
+// Portfolio scraper
+async function scrapePortfolio(page) {
+  try {
+    await page.goto('https://www.iam-rahularora.me', {
+      waitUntil: 'networkidle',
+      timeout: 60000,
+    });
+
+    console.log('[portfolio] Loaded URL:', await page.url());
+
+    await page.waitForTimeout(3000);
+
+    const body = await page.locator('body').innerText();
+
+    return {
+      games: body,
+      bonus: '',
+      announcements: '',
+    };
+  } catch (error) {
+    console.error('[scraper] Portfolio error:', error.message);
+
+    return {
+      games: 'Error fetching data',
+      bonus: '',
+      announcements: '',
+    };
+  }
+}
+
 async function main() {
   const startTime = Date.now();
   console.log('[scraper] Starting GitHub Actions scrape...');
@@ -197,7 +227,8 @@ async function main() {
 
     console.log('[scraper] Browser launched, opening pages...');
 
-    const [page1, page2] = await Promise.all([
+    const [page1, page2, page3] = await Promise.all([
+      context.newPage(),
       context.newPage(),
       context.newPage(),
     ]);
@@ -207,9 +238,10 @@ async function main() {
     const results = await Promise.allSettled([
       scrapeArcadePortal(page1),
       scrapeFacilitatorPortal(page2),
+      scrapePortfolio(page3),
     ]);
 
-    const websiteIds = ['arcade-portal', 'facilitator-portal'];
+    const websiteIds = ['arcade-portal', 'facilitator-portal', 'portfolio'];
     const scrapedAt = new Date();
 
     // Process each result

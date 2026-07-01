@@ -2,7 +2,7 @@
 // Arcade Pulse — Shared TypeScript Types
 // ============================================
 
-export type WebsiteId = 'arcade-portal' | 'facilitator-portal';
+export type WebsiteId = 'arcade-portal' | 'facilitator-portal' | 'portfolio';
 
 export interface WebsiteConfig {
   id: WebsiteId;
@@ -23,6 +23,12 @@ export const WEBSITES: Record<WebsiteId, WebsiteConfig> = {
     name: 'Arcade Facilitator Portal',
     url: 'https://rsvp.withgoogle.com/events/arcade-facilitator/home',
     description: 'Games Section, Bonus Section, Announcements',
+  },
+  'portfolio': {
+    id: 'portfolio',
+    name: 'Rahul\'s Portfolio',
+    url: 'https://www.iam-rahularora.me',
+    description: 'Portfolio website content monitoring',
   },
 };
 
